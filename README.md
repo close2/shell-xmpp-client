@@ -3,6 +3,9 @@ This is the successor of my code.google.com project: https://code.google.com/p/s
 I have imported the code.google.com versions as separate branches.
 
 
+I will try to find some time, and go over all argument names, and introduce a versioning system.
+Until then find the most recent version in my develop branch.
+
 You need ncat or netcat for the connection, but no other external library. Most parsing is done with sed (and grep).
 
 I implemented this client/bot to remote control my openwrt router.
