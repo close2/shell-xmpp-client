@@ -794,7 +794,7 @@ then
 	_msg="$_msg$nl.$nl"
 	debug "Sending to fifo_control: ***$_msg***"
 	printf '%s' "$_msg" > "$fifo_control"
-	head -n 1 < "$fifo_reply"
+	head -n 1 < "$fifo_reply" > /dev/null
 fi
 
 if [ "$cmd" = "$cmd_status" ]
@@ -824,7 +824,7 @@ then
 	_status="$_status$nl.$nl"
 	debug "Sending to fifo_control: ***$_status***"
 	printf '%s' "$_status" > "$fifo_control"
-	head -n 1 < "$fifo_reply"
+	head -n 1 < "$fifo_reply" > /dev/null
 fi
 
 if [ "$cmd" = "$cmd_msg_count" ]
