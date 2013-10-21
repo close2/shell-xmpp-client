@@ -3,10 +3,6 @@ This is the successor of my code.google.com project: https://code.google.com/p/s
 I have imported the code.google.com versions as separate branches.
 
 
-I will try to find some time, and go over all argument names, and introduce a versioning system.
-Until then find the most recent version in my develop branch.
-
-
 This program is not yet completely stable!  Most problems are related to command handling.  If you keep them sequential it should mostly work.
 
 You need ncat or netcat for the connection, but no other external library. Most parsing is done with sed (and grep).
