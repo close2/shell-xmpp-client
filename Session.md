@@ -1,4 +1,4 @@
-```
+```bash
 [cl:~/shell-xmpp-client] $ ./xmpp.sh 
 
 
