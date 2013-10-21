@@ -195,8 +195,6 @@ done
 #   normal xmpp stream.
 #   In control mode _xmpp should never block and control
 #   commands are therefore designed that _xmpp always knows if there is a next line for the command.
-#   When switching back to message processing mode another '\a\n' is read and discarded telling
-#   _prepare_input that more message data may be sent.
 #
 # The fifos:
 #   fifo_loop:
