@@ -26,7 +26,6 @@ do
 
 	./xmpp.sh --msg "$from" "I can say that too!:$nl$message"
 
-	sleep 3
 	count=$count+1
 	./xmpp.sh --set-status "I have replied to $count messages!"
 done

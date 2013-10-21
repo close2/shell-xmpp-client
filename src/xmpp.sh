@@ -310,6 +310,15 @@ _xmpp() {
                 if [ "$in_line" = "" ]
 		then
 			debug "Opening fifo_control read/write"
+			# we have to close fifo_control before sending our reply
+			# otherwise we have a race condition, where the command receives
+			# for instance the message count, sends another command, even though
+			# we haven't closed fifo_control yet.  The $control_mode_char will
+			# not block (fifo_loop is also opened with <>).
+			# We possibly close fifo_control right after the new command,
+			# effectively discarding it.  We will however read the $control_mode_char
+			# and reenter control_mode waiting for a command we discarded by
+			# closing fifo_control too late.
 			exec 20<>$fifo_control
 			# there must be a command in fifo control (we have received a single \a)
 			debug "control mode, read from fifo ($$)"
@@ -320,6 +329,7 @@ _xmpp() {
                 fi
 		if [ "$in_line" = "$cmd_msg_count" ]
 		then
+			exec 20<&-
 			debug "Sending message count: $received_messages_count"
 			_xmpp_reply_p "$received_messages_count" "nl" > $fifo_reply
 		fi
@@ -332,6 +342,7 @@ _xmpp() {
 		fi
 		if [ "$in_line" = "$cmd_next_msg" ]
 		then
+			exec 20<&-
 			if [ "$received_messages_count" -gt "0" ]
 			then
 				received_messages_count=$(( $received_messages_count - 1 ))
@@ -383,15 +394,19 @@ _xmpp() {
 			debug "  to $to"
 			_read_txt_block
 			_send_msg "$to" "$txt"
+			exec 20<&-
+			_xmpp_reply_p "OK" "nl" > $fifo_reply
 		fi
 		if [ "$in_line" = "$cmd_status" ]
 		then
 			debug "read txt (status), read from fifo ($$)"
 			_read_txt_block
 			_set_status "$txt"
+			exec 20<&-
+			_xmpp_reply_p "OK" "nl" > $fifo_reply
 		fi
 		debug "Returning from _xmpp_control_mode with 0"
-		#close file-descriptor again
+		# close file-descriptor again (should already be closed!)
 		exec 20<&-
 		return 0;
 	}
@@ -779,6 +794,7 @@ then
 	_msg="$_msg$nl.$nl"
 	debug "Sending to fifo_control: ***$_msg***"
 	printf '%s' "$_msg" > "$fifo_control"
+	head -n 1 < "$fifo_reply" > /dev/null
 fi
 
 if [ "$cmd" = "$cmd_status" ]
@@ -808,6 +824,7 @@ then
 	_status="$_status$nl.$nl"
 	debug "Sending to fifo_control: ***$_status***"
 	printf '%s' "$_status" > "$fifo_control"
+	head -n 1 < "$fifo_reply" > /dev/null
 fi
 
 if [ "$cmd" = "$cmd_msg_count" ]
