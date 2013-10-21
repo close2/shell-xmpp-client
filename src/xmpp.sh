@@ -139,7 +139,7 @@ do
 			shift 2
 			;;
 		"--$cmd_connect")
-			cmd="$cmd_message"
+			cmd="$cmd_connect"
 			shift 1
 			;;
 		"--$cmd_message")
@@ -694,10 +694,17 @@ _start() {
 
 		# after ncat closes (probably because disconnected) close fd 3 so that _xmpp will finish as well
 		_xmpp "$jid" "$resource" "$login_pass" "$fifo_control" "$fifo_reply" <&3 | (sh -c "$ncat"; exec 3<&-) >&3
-	) &
+	) >/dev/null &
+	# disconnect stdout so that command substitution does not block
 
 	if [ "$output_eval" = "t" ]
 	then
+		echo -n "XMPP_SOCKET_CTRL=\"$fifo_control\";"
+		echo -n "export XMPP_SOCKET_CTRL;"
+		echo -n "XMPP_SOCKET_REPLY=\"$fifo_reply\";"
+		echo -n "export XMPP_SOCKET_REPLY;"
+		echo -n "XMPP_SOCKET_LOOP=\"$fifo_loop\";"
+		echo "export XMPP_SOCKET_LOOP;"
 		echo "# Whenever you want to communicate with this xmpp instance you have to provide"
 		echo "# the following sockets, either by passing the arguments --fifo_control and --fifo_reply"
 		echo "# or by setting the ENV variables XMPP_SOCKET_CTRL and XMPP_SOCKET_REPLY"
@@ -705,12 +712,6 @@ _start() {
 		echo "# (You can automate this the next time using eval: "
 		echo -n '# eval `'; echo -n "$calledWith"; echo '`'
 		echo "# )"
-		echo "XMPP_SOCKET_CTRL=\"$fifo_control\""
-		echo "export XMPP_SOCKET_CTRL"
-		echo "XMPP_SOCKET_REPLY=\"$fifo_reply\""
-		echo "export XMPP_SOCKET_REPLY"
-		echo "XMPP_SOCKET_LOOP=\"$fifo_loop\""
-		echo "export XMPP_SOCKET_LOOP"
 	fi
 }
 
