@@ -1,0 +1,10 @@
+{
+  "files": [
+    {
+      "name": "README.md",
+      "regexs": [
+        "Version ###"
+      ]
+    }
+  ]
+}

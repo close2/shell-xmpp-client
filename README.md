@@ -16,3 +16,7 @@ I implemented this client/bot to remote control my openwrt router.
 shell-xmpp-client should work in bash and ash.
 
 If you need another license (BSD, MIT,...) please contact me.
+
+
+For https://npmjs.org/package/versiontag :
+Version 1.0.0
