@@ -9,7 +9,7 @@ declare -i count=0
 
 while true
 do
-	incoming=$(./xmpp.sh --get_next_msg)
+	incoming=$(./xmpp.sh --next-msg)
 	from=
 	message=
         for line in $incoming
@@ -24,9 +24,9 @@ do
 	echo "From: $from"
 	echo "Message: $message"
 
-	./xmpp.sh --message "$from" "I can say that too!:$nl$message"
+	./xmpp.sh --msg "$from" "I can say that too!:$nl$message"
 
 	sleep 3
 	count=$count+1
-	./xmpp.sh --status "I have replied to $count messages!"
+	./xmpp.sh --set-status "I have replied to $count messages!"
 done
