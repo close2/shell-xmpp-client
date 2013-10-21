@@ -18,4 +18,5 @@ shell-xmpp-client should work in bash and ash.
 If you need another license (BSD, MIT,...) please contact me.
 
 
+For https://npmjs.org/package/versiontag :
 Version 0.0.0
