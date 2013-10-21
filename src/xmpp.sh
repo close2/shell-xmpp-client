@@ -33,34 +33,47 @@ resource="console"
 ncat="ncat --ssl talk.google.com 5223"
 
 # Commands
-cmd_message="message"
-cmd_status="status"
-cmd_msg_count="get_msg_count"
-cmd_next_msg="get_next_msg"
+cmd_connect="connect"
+cmd_message="msg"
+cmd_status="set-status"
+cmd_msg_count="msg-count"
+cmd_next_msg="next-msg"
 cmd_help="help"
-cmd_gen_pass="generate_password"
+cmd_gen_pass="generate-password"
 cmd_disconnect="disconnect"
 arg_jid="jid"
 arg_pass="pass"
-arg_pass_file="pass_file"
+arg_pass_file="pass-file"
 arg_resource="resource"
 arg_ncat="ncat"
-arg_fifo_loop="fifo_loop"
-arg_fifo_reply="fifo_reply"
-arg_fifo_control="fifo_control"
-arg_no_eval_output="no_eval_output"
-arg_debug_file="debug_file"
+arg_fifo_loop="fifo-loop"
+arg_fifo_reply="fifo-reply"
+arg_fifo_control="fifo-control"
+arg_no_eval_output="no-eval-output"
+arg_debug_file="debug-file"
 
 # printUsage
 printUsage() {
 	echo "USAGE:"
 	echo "* Start connection:"
-	echo "	$0 --$arg_jid jid [--$arg_resource console] {--$arg_pass password | --$arg_pass_file file} [--$arg_ncat \"ncat --ssl talk.google.com 5223\"]"
-	echo "	Example: $0 --$arg_jid bot@gmail.com --$arg_pass_file ~/.gmail_password"
+	echo "	$0 --$cmd_connect --$arg_jid jid [--$arg_resource console] {--$arg_pass password | --$arg_pass_file file} [--$arg_ncat \"ncat --ssl talk.google.com 5223\"]"
+	echo "	Example: $0 --$cmd_connect --$arg_jid bot@gmail.com --$arg_pass_file ~/.gmail_password"
 	echo "	  Possible optional arguments:"
 	echo "	    --$arg_no_eval_output: don't output eval commands"
 	echo "	    --$arg_fifo_loop, --$arg_fifo_reply, --$arg_fifo_control: specify names for fifos"
 	echo "	    --$arg_debug_file: debug output will be appended to this file (stderr would be /dev/fd/2)"
+	echo "* Get number of messages waiting for retrieval:"
+	echo "	$0 --$cmd_msg_count"
+	echo "	Example: $0 --$cmd_msg_count"
+	echo "    Example Output:"
+	echo "      2"
+	echo "* Retrieve (and remove) next message:"
+	echo "	$0 --$cmd_next_msg"
+	echo "	Example: $0 --$cmd_next_msg"
+	echo "    Example Output:"
+	echo "      somebody@gmail.com/resource1"
+	echo "      actual message"
+	echo "      possibly over multiple lines"
 	echo "* Send message:"
 	echo "	$0 --$cmd_message to_jid txt"
 	echo "	Example: $0 --$cmd_message somebody@gmail.com \"\$(printf 'Hello\nnice to see you')\""
@@ -73,6 +86,8 @@ printUsage() {
 	echo "	$0 --$cmd_gen_pass"
 	echo "* Print this help:"
 	echo "	$0 --help"
+	echo
+	echo
 }
 
 # then parse options and overwrite default values
@@ -122,6 +137,10 @@ do
 		"--$arg_debug_file")
 			debug_file="$2"
 			shift 2
+			;;
+		"--$cmd_connect")
+			cmd="$cmd_message"
+			shift 1
 			;;
 		"--$cmd_message")
 			cmd="$cmd_message"
@@ -697,6 +716,8 @@ _start() {
 
 throwError() {
 	echo "$2"
+	echo
+	echo
 	printUsage
 	exit $1
 }
@@ -707,7 +728,7 @@ switchToControlMode() {
 
 IFS="$nl"
 
-if [ "$cmd" = "" ]
+if [ "$cmd" = "$cmd_connect" ]
 then
 	# assume we should connect
 	# verify all necessary information is provided
@@ -833,6 +854,11 @@ if [ "$cmd" = "$cmd_disconnect" ]
 then
 	switchToControlMode
 	printf '%s\n' "$cmd" > "$fifo_control"
+fi
+
+if [ "$cmd" = "" ]
+then
+	throwError -1 ""
 fi
 
 # FIXME
