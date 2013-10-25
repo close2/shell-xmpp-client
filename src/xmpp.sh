@@ -51,6 +51,7 @@ arg_fifo_reply="fifo-reply"
 arg_fifo_control="fifo-control"
 arg_no_eval_output="no-eval-output"
 arg_debug_file="debug-file"
+arg_keep_fifos="keep-fifos"
 
 # printUsage
 printUsage() {
@@ -62,6 +63,7 @@ printUsage() {
 	echo "	    --$arg_no_eval_output: don't output eval commands"
 	echo "	    --$arg_fifo_loop, --$arg_fifo_reply, --$arg_fifo_control: specify names for fifos"
 	echo "	    --$arg_debug_file: debug output will be appended to this file (stderr would be /dev/fd/2)"
+	echo "	    --$arg_keep_fifos: don't delete fifos after disconnection"
 	echo "* Get number of messages waiting for retrieval:"
 	echo "	$0 --$cmd_msg_count"
 	echo "	Example: $0 --$cmd_msg_count"
@@ -95,6 +97,7 @@ cmd=
 argument1=
 argument2=
 output_eval="t"
+keep_fifos="f"
 while [ "$1" != "" ]
 do
 	case "$1" in
@@ -137,6 +140,10 @@ do
 		"--$arg_debug_file")
 			debug_file="$2"
 			shift 2
+			;;
+		"--$arg_keep_fifos")
+			keep_fifos="t"
+			shift 1
 			;;
 		"--$cmd_connect")
 			cmd="$cmd_connect"
@@ -688,7 +695,8 @@ _start() {
 	local fifo_control=$6
 	local fifo_reply=$7
 	local output_eval=$8
-	local calledWith=$9
+	local keep_fifos=$9
+	local calledWith=$10
 
 	debug "Starting xmpp-client with jid: $jid/$resource.  ncat is $ncat.  Fifos: loop: $fifo_loop, command: $fifo_control, reply: $fifo_reply"
 
@@ -699,12 +707,27 @@ _start() {
 		mkdir -p "$fifo_dir" 2> /dev/null > /dev/null
 		mkfifo "$fifo"
 	done
+	
+	on_exit() {
+		debug "on_exit (keep_fifos: $keep_fifos)"
+		if [ "$keep_fifos" = "f" ]
+		then
+			for fifo in "$fifo_loop" "$fifo_control" "$fifo_reply"
+			do
+				debug "Deleting $fifo"
+				local fifo_dir=$(dirname "$fifo")
+				rm "$fifo"
+				rmdir -p "$fifo_dir" 2> /dev/null > /dev/null
+			done
+		fi
+	}
 
 	# this goes into background and will stay alive
 	(
 		exec 3<>"$fifo_loop"
 		exec 9<>"$fifo_reply"
 
+		trap on_exit exit
 		# after ncat closes (probably because disconnected) close fd 3 so that _xmpp will finish as well
 		_xmpp "$jid" "$resource" "$login_pass" "$fifo_control" "$fifo_reply" <&3 | (sh -c "$ncat"; exec 3<&-) >&3
 	) >/dev/null &
@@ -761,7 +784,7 @@ then
 	fi
 
 	debug "Calling _start from $$"
-	_start "$jid" "$resource" "$login_pass" "$ncat" "$fifo_loop" "$fifo_control" "$fifo_reply" "$output_eval" "$calledWith"
+	_start "$jid" "$resource" "$login_pass" "$ncat" "$fifo_loop" "$fifo_control" "$fifo_reply" "$output_eval" "$keep_fifos" "$calledWith"
 fi
 
 
