@@ -38,6 +38,7 @@ cmd_message="msg"
 cmd_status="set-status"
 cmd_msg_count="msg-count"
 cmd_next_msg="next-msg"
+cmd_cancel_next_msg="cancel-next-msg"
 cmd_help="help"
 cmd_gen_pass="generate-password"
 cmd_disconnect="disconnect"
@@ -168,6 +169,7 @@ do
 			cmd="$cmd_next_msg"
 			shift 1
 			;;
+		# no cmd_cancel_next_msg !
 		"--$cmd_gen_pass")
 			cmd="$cmd_gen_pass"
 			shift 1
@@ -346,6 +348,12 @@ _xmpp() {
 			# just to be sure close fifo_control
 			exec 20<&-
 			return 1;
+		fi
+		if [ "$in_line" = "$cmd_cancel_next_msg" ]
+		then
+			debug "Canceling --$cmd_next_msg (this is actually a noop)"
+			exec 20<&-
+			_xmpp_reply_p "OK" "nl" > $fifo_reply
 		fi
 		if [ "$in_line" = "$cmd_next_msg" ]
 		then
@@ -858,11 +866,19 @@ then
 	head -n 1 < "$fifo_reply"
 fi
 
+cancel_next_msg() {
+	switchToControlMode
+	printf '%s\n' "$cmd_cancel_next_msg" > "$fifo_control"
+	head -n 1 < "$fifo_reply" > /dev/null
+}
+
 if [ "$cmd" = "$cmd_next_msg" ]
 then
 	# output next msg
 	switchToControlMode
 	printf '%s\n' "$cmd" > "$fifo_control"
+	# tell control_mode to not autoenter for next received message
+	trap cancel_next_msg EXIT
 	while true
 	do
 		debug "read from reply (msg) ($$)"
@@ -878,6 +894,7 @@ then
 			printf '%s\n' "$line"
 		fi
 	done
+	trap - EXIT
 fi
 
 if [ "$cmd" = "$cmd_gen_pass" ]
