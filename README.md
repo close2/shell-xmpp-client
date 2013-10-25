@@ -22,4 +22,4 @@ If you need another license (BSD, MIT,...) please contact me.
 
 
 For https://npmjs.org/package/versiontag :
-Version 1.2.0
+Version 1.2.1-dev
