@@ -504,7 +504,7 @@ _xmpp() {
 	# split input into 1 xml value and the rest
 	_xmpp_split_input() {
 		local input=$1
-		local xml_name=$(expr match "$input" '[^<]*<[[:space:]]*\([a-zA-Z0-9_]*\)')
+		local xml_name=$(expr match "$input" '[^<]*<[[:space:]]*\([a-zA-Z0-9_:]*\)')
 	
 		result_xml_name=
 		result_xml=
@@ -517,7 +517,7 @@ _xmpp() {
 		fi
 	
 		# let's try <abc ... /> first
-		local xml_1=$(expr match "$input" '[^<]*\(<[[:space:]]*[a-zA-Z0-9_]*\([^>]\)*/>\).*')
+		local xml_1=$(expr match "$input" '[^<]*\(<[[:space:]]*[a-zA-Z0-9_:]*\([^>]\)*/>\).*')
 		if [ ${#xml_1} -gt 0 ]
 		then
 			debug "first version succeeded"
@@ -540,6 +540,20 @@ _xmpp() {
 			result_rest=$xml_2
 			return 0
 		fi
+
+		# finally try <stream:stream> which doesn't have an end
+		local xml_stream=$(expr match "$input" '[^<]*\(<[[:space:]]*[sS][tT][rR][eE][aA][mM][[:space:]]*:[[:space:]]*[sS][tT][rR][eE][aA][mM]\([^>]\)*>\).*')
+		if [ ${#xml_stream} -gt 0 ]
+		then
+			debug "stream:stream found"
+			debug "${#xml_stream}"
+			local xml_2=${input:${#xml_stream}}
+			result_xml_name="stream:stream"
+			result_xml=$xml_stream
+			result_rest=$xml_2
+			return 0
+		fi
+		
 		debug "nothing to split, probably not enough data yet"
 		return 1
 	}
@@ -589,14 +603,15 @@ _xmpp() {
 	}
 	
 	_xmpp_treat() {
-		local resp=$1
-		debug "treating: $resp"
+		local input=$1
+		debug "treating: $input"
 	
-		_xmpp_split_input "$resp" || return 1
+		_xmpp_split_input "$input" || return 1
 	
-		debug "split-input:${nl}xml-name: $result_xml_name;${nl}xml: $result_xml;${nl}rest: $result_rest"
+		debug "split-input:${nl}xml-name: $result_xml_name${nl}xml: $result_xml${nl}rest: $result_rest"
 	
 		local xml_name=$(_xmpp_p2 "$result_xml_name" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+		result_xml_name=$xml_name
 		if [ "$xml_name" = "IQ" ]
 		then
 			debug "building error iq for $result_xml"
@@ -616,6 +631,7 @@ _xmpp() {
 			return 0
 		fi
 		result=$result_rest
+		return 0
 	}
 	
 	_set_status() {
@@ -640,56 +656,53 @@ _xmpp() {
 		_xmpp_p "$stream_end"
 		exit $1
 	}
-	
+
+	local unprocessed_input
+	_process_input() {
+		local stop_on=$1
+		local ret=0
+		while true
+		do
+			debug "Inside process input loop (waiting for $stop_on)"
+			_xmpp_read
+			ret=$?; [ $ret -gt 2 ] && _disconnect $ret
+			unprocessed_input=$unprocessed_input$result
+			while [ ! -z "$unprocessed_input" ]
+			do
+				_xmpp_treat "$unprocessed_input" || break;
+				unprocessed_input=$result
+				debug "Just processed xml entity: $result_xml_name"
+				[ "$stop_on" != "" ] && [ "$result_xml_name" = "$stop_on" ] && return 0;
+			done
+		done
+	}
+
+
 	### MAIN ###
 	local ret
 	# start stream
+	debug "=== Sending stream_start ==="
 	_xmpp_p "$stream_start"
-	_xmpp_read
-	ret=$?; [ $ret -gt 2 ] && _disconnect $ret
+	_process_input "STREAM:STREAM"
+	_process_input "STREAM:FEATURES"
+	
+	debug "=== Sending stream_auth ==="
 	_xmpp_p "$stream_auth"
-	# just dump everything we get from the xmpp server
-	# if this doesn't work, we don't know how to handle errors anyway
-	# and the xmpp server will disconnect us if we do something stupid
-	while true
-	do
-		_xmpp_read 2
-		ret=$?
-		[ $ret -eq 1 ] && break
-		[ $ret -gt 2 ] && _disconnect $ret
-	done
 	
+	debug "=== Sending stream_start ==="
 	_xmpp_p "$stream_start"
-	# again, just ignore the <stream:stream> answer
-	local before=$(date +%s)
-	local after=$before
-	debug "throwing away everything from our input stream for the next 10 seconds"
-	while [ "$(( $after - $before ))" -lt 10 ]
-	do
-		_xmpp_read 2
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		after=$(date +%s)
-	done
+
+	# and again throw away the stream:stream
+	_process_input "STREAM:STREAM"
 	
+	debug "=== Sending stream_bind ==="
 	_xmpp_p "$stream_bind"
-	_xmpp_read
-	ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-	local resp=$resp$result
+	# we require an iq result (let's hope the iq we read is the correct one)
+	_process_input "IQ"
 	
 	_xmpp_p "$stream_presence"
-	
-	while true
-	do
-		debug "Inside loop"
-		_xmpp_read
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		resp=$resp$result
-		while [ ! -z "$resp" ]
-		do
-			_xmpp_treat "$resp" || break;
-			resp=$result
-		done
-	done
+
+	_process_input
 	_disconnect 2
 }
 
@@ -699,8 +712,7 @@ _start() {
 	local resource=$2
 	local login_pass=$3
 	local ncat=$4
-	local fifo_loop=$5
-	local fifo_control=$6
+	local fifo_loop=$5 local fifo_control=$6
 	local fifo_reply=$7
 	local output_eval=$8
 	local keep_fifos=$9
@@ -919,7 +931,6 @@ fi
 
 # FIXME
 # need to go over exit states.  What if we get disconnected...
-# also just waiting 10 seconds is not cool (when starting)
 
 # process groups would be nicer, but openwrt router don't have the necessary executables
 # we can however grep for environment variables and values in /proc/xxx/environ
