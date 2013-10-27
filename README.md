@@ -14,7 +14,7 @@ You need ncat or netcat for the connection, but no other external library. Most 
 
 I implemented this client/bot to remote control my openwrt router.
 
-Look at src/simple/bot_simple.sh or src/app/bot.sh for examples.
+Look at [bot_simple](src/simple/bot_simple.sh) or [bot](src/app/bot.sh) for examples.
 
 
 shell-xmpp-client should work in bash and ash.
