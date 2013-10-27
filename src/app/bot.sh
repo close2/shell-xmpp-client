@@ -36,6 +36,8 @@ do
 	if [ "$message" = "disconnect" ]
 	then
 		$XMPP --disconnect
+		trap - EXIT
+		exit 0
 	fi
 
 	echo "Trying to send msg"

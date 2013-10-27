@@ -79,21 +79,11 @@ _xmpp() {
 		unescaped=$(_xmpp_p2 "$input" | sed -e 's#\&quot;#"#g' -e "s#\\&apos;#'#g" -e 's#\&lt;#<#g' -e 's#\&gt;#>#g' -e 's#\&amp;#&#g')
 	}
 	
-	# tmp_in_line is only used if we are called with a timeout
-	# in that case we avoid having incomplete data in in_line.
-	# We store that incomplete data in in_line for the next call to _xmpp_read.
-	# This function does not know if there was a timeout or if there was only a
-	# new line character.  But timeout is only used in situations where this
-	# doesn't matter
-	# return values:
 	#   0: data received / available
-	#   1: no data received (propably timeout)
 	#   100: _xmpp_control told us to disconnect
 	#   101: nothing received, other side probably disconnected
-	local tmp_in_line=""
 	local result=""
 	_xmpp_read() {
-		local timeout=$1
 		local ifs_backup="$IFS"
 		IFS=
 	
@@ -101,29 +91,13 @@ _xmpp() {
 
 		[ "$autoEnterControlMode" = "" ] || xmpp_control_mode "$autoEnterControlMode"
 
-		[ -z "$tmp_in_line" ] || result="$tmp_in_line"
-
-		unset tmp_in_line
-	
 		while true
 		do
-			if [ -z "$timeout" ]
+			if ! read -r -n1 char_in
 			then
-				if ! read -r -n1 char_in
-				then
-					debug "Didn't read anything.  Loop fifo apparently 'dead'."
-					IFS="$ifs_backup"
-					return 101
-				fi
-			else
-				read -r -n1 -t $timeout char_in
-				if [ -z "$char_in" ] # read \n or timeout
-				then
-					tmp_result="$in_line"
-					unset result
-					IFS="$ifs_backup"
-					return 1
-				fi
+				debug "Didn't read anything.  Loop fifo apparently 'dead'."
+				IFS="$ifs_backup"
+				return 101
 			fi
 	
 			if [ "$char_in" = "$control_mode_char" ]
