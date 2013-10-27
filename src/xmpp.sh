@@ -603,10 +603,10 @@ _xmpp() {
 	}
 	
 	_xmpp_treat() {
-		local resp=$1
-		debug "treating: $resp"
+		local input=$1
+		debug "treating: $input"
 	
-		_xmpp_split_input "$resp" || return 1
+		_xmpp_split_input "$input" || return 1
 	
 		debug "split-input:${nl}xml-name: $result_xml_name${nl}xml: $result_xml${nl}rest: $result_rest"
 	
@@ -657,105 +657,52 @@ _xmpp() {
 		exit $1
 	}
 
+	local unprocessed_input
+	_process_input() {
+		local stop_on=$1
+		local ret=0
+		while true
+		do
+			debug "Inside process input loop (waiting for $stop_on)"
+			_xmpp_read
+			ret=$?; [ $ret -gt 2 ] && _disconnect $ret
+			unprocessed_input=$unprocessed_input$result
+			while [ ! -z "$unprocessed_input" ]
+			do
+				_xmpp_treat "$unprocessed_input" || break;
+				unprocessed_input=$result
+				debug "Just processed xml entity: $result_xml_name"
+				[ "$stop_on" != "" ] && [ "$result_xml_name" = "$stop_on" ] && return 0;
+			done
+		done
+	}
+
 
 	### MAIN ###
 	local ret
-	local resp
 	# start stream
 	debug "=== Sending stream_start ==="
 	_xmpp_p "$stream_start"
-	while true
-	do
-		debug "Inside loop"
-		_xmpp_read
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		resp=$resp$result
-		while [ ! -z "$resp" ]
-		do
-			_xmpp_treat "$resp" || break;
-			resp=$result
-			debug "result_xml_name: $result_xml_name"
-			[ "$result_xml_name" = "STREAM:STREAM" ] && break;
-		done
-		[ "$result_xml_name" = "STREAM:STREAM" ] && break;
-	done
-	debug "Received STREAM:STREAM"
+	_process_input "STREAM:STREAM"
+	_process_input "STREAM:FEATURES"
 	
-	# we should get a <stream:features>...</stream:features> from server.
-	while true
-	do
-		debug "Inside loop"
-		_xmpp_read
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		resp=$resp$result
-		while [ ! -z "$resp" ]
-		do
-			_xmpp_treat "$resp" || break;
-			resp=$result
-			debug "result_xml_name: $result_xml_name"
-			[ "$result_xml_name" = "STREAM:FEATURES" ] && break;
-		done
-		[ "$result_xml_name" = "STREAM:FEATURES" ] && break;
-	done
-	debug "Received STREAM:FEATURES"
-
 	debug "=== Sending stream_auth ==="
 	_xmpp_p "$stream_auth"
 	
 	debug "=== Sending stream_start ==="
 	_xmpp_p "$stream_start"
+
 	# and again throw away the stream:stream
-	while true
-	do
-		debug "Inside loop"
-		_xmpp_read
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		resp=$resp$result
-		while [ ! -z "$resp" ]
-		do
-			_xmpp_treat "$resp" || break;
-			resp=$result
-			debug "result_xml_name: $result_xml_name"
-			[ "$result_xml_name" = "STREAM:STREAM" ] && break;
-		done
-		[ "$result_xml_name" = "STREAM:STREAM" ] && break;
-	done
-	debug "Received STREAM:STREAM"
+	_process_input "STREAM:STREAM"
 	
 	debug "=== Sending stream_bind ==="
 	_xmpp_p "$stream_bind"
 	# we require an iq result (let's hope the iq we read is the correct one)
-	while true
-	do
-		debug "Inside loop"
-		_xmpp_read
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		resp=$resp$result
-		while [ ! -z "$resp" ]
-		do
-			_xmpp_treat "$resp" || break;
-			resp=$result
-			debug "result_xml_name: $result_xml_name"
-			[ "$result_xml_name" = "IQ" ] && break;
-		done
-		[ "$result_xml_name" = "IQ" ] && break;
-	done
-	debug "Received IQ"
+	_process_input "IQ"
 	
 	_xmpp_p "$stream_presence"
-	
-	while true
-	do
-		debug "Inside loop"
-		_xmpp_read
-		ret=$?; [ $ret -gt 2 ] && _disconnect $ret
-		resp=$resp$result
-		while [ ! -z "$resp" ]
-		do
-			_xmpp_treat "$resp" || break;
-			resp=$result
-		done
-	done
+
+	_process_input
 	_disconnect 2
 }
 
@@ -984,7 +931,6 @@ fi
 
 # FIXME
 # need to go over exit states.  What if we get disconnected...
-# also just waiting 10 seconds is not cool (when starting)
 
 # process groups would be nicer, but openwrt router don't have the necessary executables
 # we can however grep for environment variables and values in /proc/xxx/environ
