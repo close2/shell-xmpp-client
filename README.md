@@ -6,7 +6,7 @@ I have imported the code.google.com versions as separate branches.
 This program hasn't been tested very much.  If you notice some weird behaviour, please enable debugging.
 
 
-Please look at Session.md for an example on how to use this program.
+Please look at [Session.md](Session.md) for an example on how to use this program.
 
 
 You need ncat or netcat for the connection, but no other external library. Most parsing is done with sed (and grep).
