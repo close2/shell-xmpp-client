@@ -762,8 +762,8 @@ _start() {
 		echo -n "XMPP_SOCKET_LOOP=\"$fifo_loop\";"
 		echo "export XMPP_SOCKET_LOOP;"
 		echo "# Whenever you want to communicate with this xmpp instance you have to provide"
-		echo "# the following sockets, either by passing the arguments --fifo_control and --fifo_reply"
-		echo "# or by setting the ENV variables XMPP_SOCKET_CTRL and XMPP_SOCKET_REPLY"
+		echo "# the following sockets, either by passing the arguments --$arg_fifo_loop, --$arg_fifo_reply and --$arg_fifo_control"
+		echo "# or by setting the ENV variables XMP_SOCKET_LOOP, XMPP_SOCKET_CTRL and XMPP_SOCKET_REPLY"
 		echo "# Easiest way is to just copy paste and execute the next lines."
 		echo "# (You can automate this the next time using eval: "
 		echo -n '# eval `'; echo -n "$calledWith"; echo '`'
