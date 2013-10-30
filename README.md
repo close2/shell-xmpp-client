@@ -26,4 +26,4 @@ If you need another license (BSD, MIT,...) please contact me.
 
 
 For https://npmjs.org/package/versiontag :
-Version 1.3.2-dev
+Version 2.0.0
