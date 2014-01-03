@@ -5,6 +5,7 @@ JID=xmpp@delta64.com
 PASS_FILE="$(dirname $0)/pass"
 
 nl=$'\n'
+ofs=$IFS
 IFS="$nl"
 
 # start xmpp
@@ -50,3 +51,4 @@ done
 
 trap "$XMPP --disconnect" EXIT
 
+IFS=$ofs
