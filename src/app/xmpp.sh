@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# BALI notes:
+
 _XMPP="$(dirname $0)/_xmpp.sh"
 control_mode_char="$(printf '\a')"
 
@@ -382,11 +384,13 @@ _start() {
 	local resource=$2
 	local login_pass=$3
 	local ncat=$4
-	local fifo_loop=$5 local fifo_control=$6
+	local fifo_loop=$5
+        local fifo_control=$6
 	local fifo_reply=$7
 	local output_eval=$8
 	local keep_fifos=$9
-	local calledWith=$10
+        shift
+	local calledWith=$9
 
 	debug "Starting xmpp-client with jid: $jid/$resource.  ncat is $ncat.  Fifos: loop: $fifo_loop, command: $fifo_control, reply: $fifo_reply"
 
@@ -559,16 +563,17 @@ then
 	# output next msg
 	switchToControlMode
 	printf '%s\n' "$cmd" > "$fifo_control"
-	# tell control_mode to not autoenter for next received message
+	# Tell control_mode to not autoenter for next received message.
+
+	# Next msg might be blocking, don't also kill xmpp, when user
+	# presses ^C.
 	trap cancel_next_msg EXIT
 	while true
 	do
 		debug "read from reply (msg) ($$)"
 		read -r line < "$fifo_reply"
-		if [ "$line" = "." ]
-		then
-			break
-		fi
+		[ "$line" = "." ] && break
+
 		if [ "${line:0:1}" = "." ]
 		then
 			printf '%s\n' "${line:1}"

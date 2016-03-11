@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Bali notes:
+# rename _xmpp_p2 to p() (or similar).
+# rename result to received_data
+# create wrapper function for IFS (which sets and resets IFS)
+# reg expr in _xmpp_split_input are missing some [[:space:]]
+# use error_iq instead of result for _xmpp_build_error_iq()
+# rename _xmpp_treat to _xmpp_process (all treat should become process)
+# don't use _xmpp_p (p) unless we send to server.  Search for $(_xmpp_p 
+# in _process_input convert stop_on to uppercase (tr a..z A..Z)
+
 # need the following variables set:
 # jid: example xmpp@delta64.com
 # login_pass: build it using printf '\0%s\0%s' "$username" "$password" | base64
@@ -70,6 +80,7 @@ _xmpp() {
 	local escaped=
 	_xmpp_escape() {
 		local input=$1
+		#                                        & → &amp;         " → &quot;         ' → &apos;          < → &lt;         > → &gt;
 		escaped=$(_xmpp_p2 "$input" | sed -e 's#\&#\&amp;#g' -e 's#"#\&quot;#g' -e "s#'#\\&apos;#g" -e 's#<#\&lt;#g' -e 's#>#\&gt;#g')
 	}
 	
@@ -95,7 +106,7 @@ _xmpp() {
 		do
 			if ! read -r -n1 char_in
 			then
-				debug "Didn't read anything.  Loop fifo apparently 'dead'."
+				debug "Didn't read anything.  Loop fifo apparently 'died'."
 				IFS="$ifs_backup"
 				return 101
 			fi
@@ -231,7 +242,7 @@ _xmpp() {
 	
 	_xmpp_treat() {
 		local input=$1
-		debug "treating: $input"
+		debug "processing: $input"
 	
 		_xmpp_split_input "$input" || return 1
 	
